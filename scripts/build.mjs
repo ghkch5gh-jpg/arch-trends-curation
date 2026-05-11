@@ -145,7 +145,7 @@ const createRes = await fetch(`${BASE_URL}/task.create`, {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    message: { content: prompt },
+    message: { content: [{ type: "text", text: prompt }] },
     agent_profile: AGENT_PROFILE,
     hide_in_task_list: true,
     title: `arch-trends ${slug}`,
