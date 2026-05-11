@@ -87,7 +87,22 @@ ${okSources
   .map((f) => `### ${f.name} (${f.url})\n${f.text}`)
   .join("\n\n---\n\n")}
 
-structured_output_schema 에 정의된 JSON 형식으로만 응답하세요.`;
+다음 JSON 형식으로만 응답하세요 (다른 설명·서론 없이 JSON만, \`\`\`json 펜스로 감싸도 됨):
+
+{
+  "weekly_summary": "두세 문장 요약 (~120자)",
+  "trend_note": "이번 주 흐름 한 문장 (~40자)",
+  "picks": [
+    {
+      "title": "공고명",
+      "organizer": "발주처",
+      "deadline": "YYYY-MM-DD 또는 '미명시'",
+      "scale": "규모 한 줄 (없으면 빈 문자열)",
+      "url": "원문 URL",
+      "why": "왜 흥미로운지 한 문장 (~80자)"
+    }
+  ]
+}`;
 
 const STRUCTURED_SCHEMA = {
   type: "object",
@@ -137,29 +152,6 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
-// === DEBUG v2: bisect optional fields ===
-async function _diagCall(label, body) {
-  const r = await fetch(`${BASE_URL}/task.create`, {
-    method: "POST",
-    headers: {
-      "x-manus-api-key": API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const t = await r.text();
-  console.log(`[${label}] status=${r.status} body=${t.slice(0, 400)}`);
-  return r.ok;
-}
-const _diagBase = { message: { content: [{ type: "text", text: "ping" }] } };
-await _diagCall("A schema-only", { ..._diagBase, structured_output_schema: STRUCTURED_SCHEMA });
-await _diagCall("B title-only", { ..._diagBase, title: "diag" });
-await _diagCall("C profile-only", { ..._diagBase, agent_profile: AGENT_PROFILE });
-await _diagCall("D hide-only", { ..._diagBase, hide_in_task_list: true });
-console.log("=== END DEBUG v2 ===");
-process.exit(0);
-// === END DEBUG ===
-
 console.log(`Manus task.create 호출 — profile=${AGENT_PROFILE}`);
 const createRes = await fetch(`${BASE_URL}/task.create`, {
   method: "POST",
@@ -172,7 +164,10 @@ const createRes = await fetch(`${BASE_URL}/task.create`, {
     agent_profile: AGENT_PROFILE,
     hide_in_task_list: true,
     title: `arch-trends ${slug}`,
-    structured_output_schema: STRUCTURED_SCHEMA,
+    // structured_output_schema removed — Manus v2 returns 400 invalid_argument
+    // for this field as of 2026-05-11. Bisect in commit 25a13ad confirmed it
+    // breaks alone while title/profile/hide_in_task_list each pass. Falling
+    // back to assistant_message JSON parsing path (already implemented below).
   }),
 });
 
@@ -236,8 +231,18 @@ for (let i = 0; i < MAX_POLLS; i++) {
   if (stopped) {
     console.log("Task stopped — assistant_message에서 JSON 추출 시도");
     const assistant = messages.find((m) => m.type === "assistant_message");
-    const text = assistant?.assistant_message?.content;
-    if (typeof text === "string") {
+    const raw = assistant?.assistant_message?.content;
+    // Manus v2 returns content as array of typed parts; older paths returned string.
+    const text =
+      typeof raw === "string"
+        ? raw
+        : Array.isArray(raw)
+        ? raw
+            .filter((p) => p?.type === "text" && typeof p.text === "string")
+            .map((p) => p.text)
+            .join("\n")
+        : "";
+    if (text) {
       const m =
         text.match(/```json\s*([\s\S]*?)\s*```/) ||
         text.match(/\{[\s\S]*\}/);
@@ -246,8 +251,13 @@ for (let i = 0; i < MAX_POLLS; i++) {
           structuredResult = JSON.parse(m[1] ?? m[0]);
         } catch (e) {
           console.error("JSON 파싱 실패:", e.message);
+          console.error("원문 처음 500자:", text.slice(0, 500));
         }
+      } else {
+        console.error("JSON 블록 미발견. 원문 처음 500자:", text.slice(0, 500));
       }
+    } else {
+      console.error("assistant_message.content 비어있음.");
     }
     break;
   }
