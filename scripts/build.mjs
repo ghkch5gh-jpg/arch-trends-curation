@@ -25,8 +25,30 @@ if (validSources.length === 0) {
   process.exit(1);
 }
 
-function stripHtml(html) {
-  return html
+function stripHtml(html, baseUrl) {
+  // Inline anchor href as "text (absoluteURL)" BEFORE stripping tags so the
+  // model can put real deep-links in pick.url instead of just the source's
+  // landing page.
+  let s = html.replace(
+    /<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+    (_, href, inner) => {
+      let url;
+      try {
+        url = new URL(href, baseUrl).href;
+      } catch {
+        url = href;
+      }
+      const text = inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      if (!text) return " ";
+      // Drop nav chrome and non-http links — keep text only so the model still
+      // sees menu words for context but won't mistake them for pick URLs.
+      if (/^(로그인|회원가입|닫기|이전|다음|home|menu|next|prev|>|<)$/i.test(text))
+        return ` ${text} `;
+      if (/^(mailto:|tel:|javascript:|#)/i.test(url)) return ` ${text} `;
+      return ` ${text} (${url}) `;
+    }
+  );
+  return s
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
@@ -52,7 +74,7 @@ const fetched = await Promise.all(
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
-      const text = stripHtml(html).slice(0, 20000);
+      const text = stripHtml(html, s.url).slice(0, 20000);
       return { ...s, text, ok: true };
     } catch (err) {
       console.warn(`수집 실패 ${s.name}: ${err.message}`);
@@ -73,14 +95,46 @@ const dateStr = kst.toISOString().slice(0, 10);
 const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][kst.getUTCDay()];
 const slug = `${dateStr}_${dayOfWeek}`;
 
+// Find the most recent prior weekly file (skip this run's slug if a same-day
+// re-run is happening). Extract its `### Title` lines so we can ask the model
+// to prefer genuinely new picks, and mark survivors as carryovers.
+const _allMd = (await readdir(".")).filter((f) =>
+  /^\d{4}-\d{2}-\d{2}_.+\.md$/.test(f)
+);
+const _priorFile = _allMd
+  .filter((f) => f !== `${slug}.md`)
+  .sort()
+  .reverse()[0];
+let priorTitles = [];
+if (_priorFile) {
+  const priorContent = await readFile(_priorFile, "utf8");
+  priorTitles = [...priorContent.matchAll(/^###\s+(?:\[신규\]\s*)?(.+)$/gm)].map(
+    (m) => m[1].trim()
+  );
+  console.log(
+    `이전 회차 ${_priorFile}: 제목 ${priorTitles.length}개 추출 → 프롬프트에 중복 회피 힌트로 주입`
+  );
+}
+
 const prompt = `당신은 한국 건축 현상설계 트렌드 큐레이터입니다. **아래 제공된 텍스트만** 사용하세요. 외부 웹 브라우징·도구 사용 금지 — 순수하게 텍스트만 읽고 판단.
 
 ## 미션
 1. 새로 뜬 의미 있는 공모전·발주·설계공고를 3~5개 골라주세요.
    - 단순 행정공고·자료실 글 제외.
    - *건축 설계*가 본질인 것만. 단순 시공·전기·기계 분리 발주 제외.
+   - **이미 지난 회차에서 다룬 공고는 가능한 한 제외** — 같은 공고가 또 보이면 신규 픽을 우선.
 2. 각 항목에 한 문장 큐레이션 — *왜 이게 흥미로운지*. 규모·발주처 의도·시기적 의미·이전 패턴과의 차이 중 하나에 집중.
 3. 이번 주 전체 흐름 두세 문장 요약.
+
+## URL 박는 규칙 (중요)
+각 항목의 \`url\` 필드는 **그 공고 자체로 가는 deep link**여야 합니다. 사이트 텍스트 안에 \`공고제목 (https://...)\` 형태로 deep link가 보이면 그것을 박으세요. deep link가 안 보일 때만 사이트 메인 URL을 fallback으로 사용하세요.
+
+## 이미 다뤘던 공고 (지난 회차 카피)
+${
+  priorTitles.length > 0
+    ? priorTitles.map((t) => `- ${t}`).join("\n")
+    : "(첫 회차 — 비교 대상 없음)"
+}
 
 ## 사이트 텍스트 (${okSources.length}개)
 ${okSources
@@ -280,6 +334,29 @@ if (!structuredResult) {
 }
 
 const data = structuredResult;
+
+// Annotate which picks are genuinely new vs carried over from a prior week.
+// Normalized comparison so slight rewording doesn't false-positive.
+const _norm = (s) => (s || "").replace(/\s+/g, "").toLowerCase();
+const _priorNorm = priorTitles.map(_norm);
+for (const p of data.picks || []) {
+  if (priorTitles.length === 0) {
+    p.isNew = false; // first run — "new" isn't meaningful
+    continue;
+  }
+  const np = _norm(p.title);
+  const matched = _priorNorm.some(
+    (pp) =>
+      pp === np ||
+      (np.length >= 8 && pp.length >= 8 && (np.includes(pp) || pp.includes(np)))
+  );
+  p.isNew = !matched;
+}
+const newCount = (data.picks || []).filter((p) => p.isNew).length;
+console.log(
+  `픽 ${(data.picks || []).length}개 중 신규 ${newCount}개 (지난 회차 대비)`
+);
+
 const heroDate = dateStr.replaceAll("-", ".");
 
 const md = `---
@@ -297,7 +374,7 @@ ${data.weekly_summary}
 
 ${data.picks
   .map(
-    (p) => `### ${p.title}
+    (p) => `### ${p.isNew ? "[신규] " : ""}${p.title}
 
 - **발주처**: ${p.organizer}
 - **마감**: ${p.deadline}${p.scale ? `\n- **규모**: ${p.scale}` : ""}
