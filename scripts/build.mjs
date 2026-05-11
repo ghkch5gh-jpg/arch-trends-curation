@@ -525,11 +525,28 @@ const files = (await readdir("."))
   .sort()
   .reverse();
 
+// Build a teaser block from THIS run's trends so the index page is never
+// just a bare 회차 list. The teaser is regenerated every run, so it always
+// reflects the latest issue.
+const sourceNames = validSources
+  .map((s) => s.name.replace(/\s*\([^)]+\)\s*$/, "").trim())
+  .filter(Boolean);
+const sourceLine =
+  sourceNames.length > 0 ? sourceNames.join(" · ") : "(미설정)";
+const trendTeaser =
+  data.trends.length > 0
+    ? data.trends.map((t, i) => `${i + 1}. **${t.title}**`).join("\n")
+    : "_(이번 주 트렌드 추출 결과 없음)_";
+const ownPackLine =
+  ownPackSummary.total > 0
+    ? `사용자가 직접 큐레이션한 학교 현상설계 당선작 **${ownPackSummary.total}건**의 어휘 사전`
+    : "사용자 당선작 어휘 사전";
+
 const indexMd = `---
 title: 건축 현상설계 트렌드
 eyebrow: WEEKLY · KOREA ARCH COMPETITIONS
 hero_title: "Weekly Pulse,<br/><i>건축 현상설계.</i>"
-description: 매주 월요일 09:00 KST, 새로 뜬 공모전과 발주 흐름을 정리합니다.
+description: 매주 월요일 09:00 KST, 한국 건축 현상설계 트렌드를 자동 추출합니다. 발주 캘린더가 아니라 설계 어휘·전략에 초점.
 stats:
   - num: "${validSources.length}"
     lbl: "수집 사이트"
@@ -538,6 +555,26 @@ stats:
   - num: "${files.length}"
     lbl: "회차"
 ---
+
+## 이번 주 (${slug})
+
+${data.weekly_summary}
+
+**다룬 트렌드 ${data.trends.length}건:**
+
+${trendTeaser}
+
+[→ 자세히 보기](${slug}.html)
+
+## 이 큐레이션이 하는 것
+
+매주 월요일 09:00 KST, **${sourceLine}** ${validSources.length}곳에서 새로 뜬 공모와 결과를 자동 수집해 Manus AI가 트렌드를 추출합니다.
+
+단순 공모 캘린더가 아니라 **설계 어휘·전략** 추출이 목적입니다. 매 트렌드마다 evidence 공고 묶음과 함께 구체적인 디자인 시사(공간 어휘·다이어그램 전략·재료 선택)를 같이 제시합니다.
+
+디자인 시사 작성 시 ${ownPackLine}을 직접 참조하므로, 응모안 컨셉 스타팅 포인트로 바로 활용 가능합니다.
+
+자동 추출이라 일부 표면 패턴·노이즈 섞일 수 있음 — 사람 검수 권장.
 
 ## 회차
 
