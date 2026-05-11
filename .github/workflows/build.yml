@@ -21,6 +21,10 @@ jobs:
       - run: node scripts/build.mjs
         env:
           MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
+          # PAT for reading the private design-competition-ontology repo's
+          # data/sample-packs/*.json (fine-grained token, Contents:Read scope).
+          # Worker still runs without this — pack dictionary just becomes empty.
+          READ_PACKS_TOKEN: ${{ secrets.READ_PACKS_TOKEN }}
           # lite 프로파일이 structured_output_schema 미지원 (400 invalid_argument)
           # → 표준 'manus-1.6'으로 격상. 품질 더 필요하면 'manus-1.6-max'.
           MANUS_AGENT_PROFILE: manus-1.6

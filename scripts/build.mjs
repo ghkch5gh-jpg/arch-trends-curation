@@ -36,19 +36,61 @@ const OWN_PACK_SLUGS = [
   "special",
 ];
 
+async function fetchWithRetry(url, { headers = {}, attempts = 3, baseDelayMs = 800 } = {}) {
+  const mergedHeaders = {
+    "User-Agent":
+      "Mozilla/5.0 (compatible; ArchTrendsBot/1.0; +https://design-competition-ontology.vercel.app)",
+    ...headers,
+  };
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { headers: mergedHeaders });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res;
+    } catch (err) {
+      lastErr = err;
+      // 401·403·404 are deterministic — retrying won't help, fail fast.
+      if (/HTTP (401|403|404)/.test(err.message)) throw err;
+      if (i < attempts - 1) {
+        const delay = baseDelayMs * Math.pow(2, i);
+        console.warn(
+          `fetch 재시도 ${i + 1}/${attempts - 1} (${delay}ms 대기): ${url} — ${
+            err.message
+          }`
+        );
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+const READ_PACKS_TOKEN = process.env.READ_PACKS_TOKEN || "";
+if (READ_PACKS_TOKEN) {
+  console.log(
+    "READ_PACKS_TOKEN 감지 — design-competition-ontology를 인증된 fetch로 접근"
+  );
+}
+
 async function fetchOwnPackSummary() {
+  const authHeaders = READ_PACKS_TOKEN
+    ? { Authorization: `Bearer ${READ_PACKS_TOKEN}` }
+    : {};
   const results = await Promise.all(
     OWN_PACK_SLUGS.map(async (slug) => {
       try {
-        const res = await fetch(`${OWN_PACKS_RAW_BASE}/${slug}.json`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetchWithRetry(
+          `${OWN_PACKS_RAW_BASE}/${slug}.json`,
+          { headers: authHeaders }
+        );
         const pack = await res.json();
         const projects = (pack.nodes || []).filter(
           (n) => n.type === "Project" && n.data?.award === "당선"
         );
         return { slug, projects, ok: true };
       } catch (err) {
-        console.warn(`own pack ${slug} fetch 실패: ${err.message}`);
+        console.warn(`own pack ${slug} fetch 실패 (재시도 후): ${err.message}`);
         return { slug, projects: [], ok: false };
       }
     })
@@ -152,18 +194,12 @@ function stripHtml(html, baseUrl) {
 const fetched = await Promise.all(
   validSources.map(async (s) => {
     try {
-      const res = await fetch(s.url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (compatible; ArchTrendsBot/1.0; +https://design-competition-ontology.vercel.app)",
-        },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetchWithRetry(s.url);
       const html = await res.text();
       const text = stripHtml(html, s.url).slice(0, 9000);
       return { ...s, text, ok: true };
     } catch (err) {
-      console.warn(`수집 실패 ${s.name}: ${err.message}`);
+      console.warn(`수집 실패 ${s.name} (재시도 후): ${err.message}`);
       return { ...s, text: "", ok: false, error: String(err) };
     }
   })
