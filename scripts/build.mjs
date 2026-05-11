@@ -138,20 +138,31 @@ if (_priorFile) {
   );
 }
 
-const prompt = `당신은 한국 건축 현상설계 트렌드 큐레이터입니다. **아래 제공된 텍스트만** 사용하세요. 외부 웹 브라우징·도구 사용 금지 — 순수하게 텍스트만 읽고 판단.
+const prompt = `당신은 한국 건축 현상설계 **트렌드 분석가**입니다. 단순 공모 리스트가 아니라, 현상설계 실무자가 *설계 어휘·전략을 갈고닦는 데 쓸 트렌드*를 추출하세요. **아래 제공된 텍스트만** 사용. 외부 도구 사용 금지.
+
+## 핵심 차이 — 캘린더 vs 트렌드
+**나쁜 출력 (캘린더)**: "현남행정문화복합센터 — 5/15 마감, 양양군 발주, 112억 규모, 농촌 복합거점"
+**좋은 출력 (트렌드)**: "농촌 행정-문화 복합거점 모델 정착 — 이번 주 2건(양양·OO), 둘 다 인구감소 소도시. 디자인 시사: 단일 매스로 행정+도서관+공연 통합. RFP에서 '주민 마당' 키워드 빈출. 광장·진입부 처리가 당락 결정."
 
 ## 미션
-1. 새로 뜬 의미 있는 공모전·발주·설계공고를 3~5개 골라주세요.
-   - 단순 행정공고·자료실 글 제외.
-   - *건축 설계*가 본질인 것만. 단순 시공·전기·기계 분리 발주 제외.
-   - **이미 지난 회차에서 다룬 공고는 가능한 한 제외** — 같은 공고가 또 보이면 신규 픽을 우선.
-2. 각 항목에 한 문장 큐레이션 — *왜 이게 흥미로운지*. 규모·발주처 의도·시기적 의미·이전 패턴과의 차이 중 하나에 집중.
-3. 이번 주 전체 흐름 두세 문장 요약.
+이번 주 사이트 텍스트 전체를 훑은 뒤, **현상설계에 실제 적용 가능한 트렌드 시그널을 2~4개** 추출합니다. 각 트렌드는 *반드시* 이번 주 관찰된 *둘 이상의 공고*를 evidence로 가져야 합니다 (단일 사례는 트렌드 아님 — 그냥 isolated case).
+
+추출할 트렌드 후보 축 (여러 축이 섞여도 됨):
+- **타이폴로지 변화**: 어떤 건물 유형 발주가 늘고 있나 (학교·도서관·복지·복합문화·산업·SOC)
+- **RFP 언어 변화**: 발주처가 강조하는 키워드 (탄소중립·그린리모델링·통합돌봄·지역상생·복합거점·역세권 연계 등)
+- **방식 변화**: 신축 vs 리모델링 비율, 대형 vs 소형, 단독 vs 복합
+- **부지·맥락 패턴**: 신도시·구도심·농촌·역세권 등 어디에 집중
+- **국제·일반 공모 시점**: 큰 아이디어 공모(건축대전·서울건축상·국제공모)의 시기 분포·주제 흐름
+
+각 트렌드에 대해:
+- **signal**: 이번 주 관찰 근거 (몇 건? 어디서?). 빈도가 약하면 솔직히 "초기 시그널" 명시.
+- **design_implication**: *이 트렌드에 응답하려면 현상설계에서 어떤 어휘·공간 전략이 유리한가.* 추상 ("친환경 강화") 금지, 구체 ("외부 복도+테라스 두께 추가로 그린리모델링 표현" 식).
+- **evidence**: 트렌드를 보여주는 *이번 주* 공고 2~5개. 각각 제목·발주처·마감·규모·deep link URL.
 
 ## URL 박는 규칙 (중요)
-각 항목의 \`url\` 필드는 **그 공고 자체로 가는 deep link**여야 합니다. 사이트 텍스트 안에 \`공고제목 (https://...)\` 형태로 deep link가 보이면 그것을 박으세요. deep link가 안 보일 때만 사이트 메인 URL을 fallback으로 사용하세요.
+evidence[].url 은 **그 공고 자체로 가는 deep link**여야 합니다. 사이트 텍스트에 \`공고제목 (https://...)\` 형태로 deep link가 보이면 그것을 박으세요. deep link가 안 보일 때만 사이트 메인 URL을 fallback.
 
-## 이미 다뤘던 공고 (지난 회차 카피)
+## 이미 다뤘던 트렌드 관점 (지난 회차 — 같은 시각 반복 피하기)
 ${
   priorTitles.length > 0
     ? priorTitles.map((t) => `- ${t}`).join("\n")
@@ -165,19 +176,25 @@ ${okSources
 
 **응답 규칙 (절대 준수):**
 - 첫 글자부터 \`{\` 또는 \`\`\`json 으로 시작. 인사·설명·"분석하겠습니다" 같은 서론 **금지**.
-- 아래 JSON 스키마 그대로, 다른 텍스트 없이만 출력.
+- 아래 스키마 그대로 다른 텍스트 없이만 출력.
 
 {
-  "weekly_summary": "두세 문장 요약 (~120자)",
-  "trend_note": "이번 주 흐름 한 문장 (~40자)",
-  "picks": [
+  "weekly_summary": "두세 문장 — 이번 주 트렌드 종합 (~150자)",
+  "trend_note": "한 문장 — 이번 주 정수 슬로건 (~40자)",
+  "trends": [
     {
-      "title": "공고명",
-      "organizer": "발주처",
-      "deadline": "YYYY-MM-DD 또는 '미명시'",
-      "scale": "규모 한 줄 (없으면 빈 문자열)",
-      "url": "원문 URL",
-      "why": "왜 흥미로운지 한 문장 (~80자)"
+      "title": "트렌드 한 줄 제목 (~30자, 예: '농촌 행정-문화 복합거점 모델 정착')",
+      "signal": "이번 주 관찰 근거 + 빈도 (~100자)",
+      "design_implication": "현상설계에 적용 가능한 구체 어휘·전략 (~150자)",
+      "evidence": [
+        {
+          "title": "공고명",
+          "organizer": "발주처",
+          "deadline": "YYYY-MM-DD 또는 '미명시'",
+          "scale": "규모 한 줄 (없으면 빈 문자열)",
+          "url": "원문 deep link URL"
+        }
+      ]
     }
   ]
 }`;
@@ -359,26 +376,31 @@ if (!structuredResult) {
 
 const data = structuredResult;
 
-// Annotate which picks are genuinely new vs carried over from a prior week.
-// Normalized comparison so slight rewording doesn't false-positive.
-const _norm = (s) => (s || "").replace(/\s+/g, "").toLowerCase();
-const _priorNorm = priorTitles.map(_norm);
-for (const p of data.picks || []) {
-  if (priorTitles.length === 0) {
-    p.isNew = false; // first run — "new" isn't meaningful
-    continue;
-  }
-  const np = _norm(p.title);
-  const matched = _priorNorm.some(
-    (pp) =>
-      pp === np ||
-      (np.length >= 8 && pp.length >= 8 && (np.includes(pp) || pp.includes(np)))
-  );
-  p.isNew = !matched;
+// Trends list (renamed from picks). Backward compat — if model returned old
+// 'picks' shape, wrap each pick as a single-evidence trend so we don't crash.
+if (!Array.isArray(data.trends) && Array.isArray(data.picks)) {
+  console.warn("모델이 옛 picks 스키마로 반환 — trends 형태로 래핑");
+  data.trends = data.picks.map((p) => ({
+    title: p.title || "(제목 없음)",
+    signal: "",
+    design_implication: p.why || "",
+    evidence: [
+      {
+        title: p.title,
+        organizer: p.organizer,
+        deadline: p.deadline,
+        scale: p.scale || "",
+        url: p.url,
+      },
+    ],
+  }));
 }
-const newCount = (data.picks || []).filter((p) => p.isNew).length;
+data.trends = Array.isArray(data.trends) ? data.trends : [];
 console.log(
-  `픽 ${(data.picks || []).length}개 중 신규 ${newCount}개 (지난 회차 대비)`
+  `트렌드 ${data.trends.length}개 추출 (evidence 총 ${data.trends.reduce(
+    (n, t) => n + (Array.isArray(t.evidence) ? t.evidence.length : 0),
+    0
+  )}건)`
 );
 
 const heroDate = dateStr.replaceAll("-", ".");
@@ -394,19 +416,27 @@ description: ${data.weekly_summary}
 
 ${data.weekly_summary}
 
-## 큐레이션
+${data.trends
+  .map((t, i) => {
+    const evidenceList = (Array.isArray(t.evidence) ? t.evidence : [])
+      .map(
+        (e) =>
+          `- [${e.title}](${e.url}) — ${e.organizer || "발주처 미상"} · 마감 ${
+            e.deadline || "미명시"
+          }${e.scale ? ` · ${e.scale}` : ""}`
+      )
+      .join("\n");
+    return `## 트렌드 ${i + 1}. ${t.title}
 
-${data.picks
-  .map(
-    (p) => `### ${p.isNew ? "[신규] " : ""}${p.title}
+**시그널** — ${t.signal || "(근거 없음)"}
 
-- **발주처**: ${p.organizer}
-- **마감**: ${p.deadline}${p.scale ? `\n- **규모**: ${p.scale}` : ""}
-- [원문 링크](${p.url})
+**디자인 시사** — ${t.design_implication || "(시사 없음)"}
 
-${p.why}
-`
-  )
+**이번 주 evidence**:
+
+${evidenceList || "_(없음)_"}
+`;
+  })
   .join("\n---\n\n")}
 
 ---
