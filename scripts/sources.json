@@ -1,17 +1,17 @@
 [
   {
-    "name": "공공건축지원센터 — 공모전 공고",
-    "url": "TBD — 사용자가 채울 것",
-    "note": "예: https://www.pa.kr/... 형태. 페이지 첫 로드 시 보이는 목록 페이지 URL"
+    "name": "부산 건축설계공모 (making.busan.go.kr)",
+    "url": "https://making.busan.go.kr/main",
+    "note": "부산시 운영 건축설계공모 포털 메인. plain HTML·UTF-8. 진행중/예정 공모전 제목·발주처 노출. 부산권 공모 신호 캡처용."
   },
   {
-    "name": "건축사협회 — 공모전 게시판",
-    "url": "TBD",
-    "note": "kira.or.kr 공모전 섹션"
+    "name": "조달청 건축HUB (hub.go.kr)",
+    "url": "https://www.hub.go.kr/portal/main.do",
+    "note": "건축서비스산업 정보시스템 메인. plain HTML·UTF-8. 대한민국건축대전·국토대전 등 국가 단위 발주·시상 뉴스. 더 상세한 진행중 공모 목록은 /portal/dpsMain.do 에 있음 — 필요시 대체."
   },
   {
-    "name": "조달청 나라장터 — 설계용역 공고",
-    "url": "TBD",
-    "note": "g2b.go.kr — 검색조건 박힌 URL이 좋음"
+    "name": "주택폴리오 공모전 DB (jootek.com)",
+    "url": "https://jootek.com/folio/contests",
+    "note": "민간 큐레이션 공모전 DB. plain HTML·UTF-8. 학교·관청·민간 설계공모 폭넓게 수집. 큐레이션 신호 가장 강할 것으로 예상."
   }
 ]
