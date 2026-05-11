@@ -21,8 +21,9 @@ jobs:
       - run: node scripts/build.mjs
         env:
           MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
-          # 모델 격상시 'manus-1.6' 또는 'manus-1.6-max'
-          MANUS_AGENT_PROFILE: manus-1.6-lite
+          # lite 프로파일이 structured_output_schema 미지원 (400 invalid_argument)
+          # → 표준 'manus-1.6'으로 격상. 품질 더 필요하면 'manus-1.6-max'.
+          MANUS_AGENT_PROFILE: manus-1.6
 
       - name: Commit and push
         run: |
