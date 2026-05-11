@@ -25,10 +25,28 @@ if (validSources.length === 0) {
   process.exit(1);
 }
 
+// Nav chrome / boilerplate that should NEVER carry a URL into the prompt.
+// Keep the text (for context) but drop the href so the prompt stays focused
+// on competition content and the model has fewer URLs to choose from.
+const NAV_TEXT = new RegExp(
+  "^(" +
+    [
+      "로그인", "회원가입", "닫기", "이전", "다음", "메인", "홈",
+      "home", "menu", "next", "prev", ">", "<",
+      "소개", "공지사항", "자료실", "검색", "사이트맵", "이용약관",
+      "개인정보처리방침", "팝업", "오늘 하루 보이지 않기",
+      "본문바로가기", "전체메뉴", "more", "더보기",
+      "english", "english\\(en\\)", "korean", "한국어",
+    ].join("|") +
+    ")$",
+  "i"
+);
+
 function stripHtml(html, baseUrl) {
   // Inline anchor href as "text (absoluteURL)" BEFORE stripping tags so the
   // model can put real deep-links in pick.url instead of just the source's
-  // landing page.
+  // landing page. Aggressively drop nav/chrome URLs to keep the prompt focused.
+  const seen = new Set(); // dedupe identical "text+url" pairs (nav often repeats)
   let s = html.replace(
     /<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
     (_, href, inner) => {
@@ -40,11 +58,15 @@ function stripHtml(html, baseUrl) {
       }
       const text = inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
       if (!text) return " ";
-      // Drop nav chrome and non-http links — keep text only so the model still
-      // sees menu words for context but won't mistake them for pick URLs.
-      if (/^(로그인|회원가입|닫기|이전|다음|home|menu|next|prev|>|<)$/i.test(text))
-        return ` ${text} `;
+      // Drop non-http, hash-only, and chrome links — keep text only.
       if (/^(mailto:|tel:|javascript:|#)/i.test(url)) return ` ${text} `;
+      if (NAV_TEXT.test(text)) return ` ${text} `;
+      // Very short anchor text is usually nav (icon-only, page numbers, etc).
+      if (text.length < 4) return ` ${text} `;
+      // Dedupe — nav blocks reappear in header/footer.
+      const key = `${text}::${url}`;
+      if (seen.has(key)) return ` ${text} `;
+      seen.add(key);
       return ` ${text} (${url}) `;
     }
   );
@@ -74,7 +96,7 @@ const fetched = await Promise.all(
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
-      const text = stripHtml(html, s.url).slice(0, 20000);
+      const text = stripHtml(html, s.url).slice(0, 12000);
       return { ...s, text, ok: true };
     } catch (err) {
       console.warn(`수집 실패 ${s.name}: ${err.message}`);
@@ -141,7 +163,9 @@ ${okSources
   .map((f) => `### ${f.name} (${f.url})\n${f.text}`)
   .join("\n\n---\n\n")}
 
-다음 JSON 형식으로만 응답하세요 (다른 설명·서론 없이 JSON만, \`\`\`json 펜스로 감싸도 됨):
+**응답 규칙 (절대 준수):**
+- 첫 글자부터 \`{\` 또는 \`\`\`json 으로 시작. 인사·설명·"분석하겠습니다" 같은 서론 **금지**.
+- 아래 JSON 스키마 그대로, 다른 텍스트 없이만 출력.
 
 {
   "weekly_summary": "두세 문장 요약 (~120자)",
