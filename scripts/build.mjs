@@ -137,23 +137,27 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
-// === DEBUG: minimal call to isolate root cause ===
-console.log("=== DEBUG: minimal task.create test ===");
-const _diagRes = await fetch(`${BASE_URL}/task.create`, {
-  method: "POST",
-  headers: {
-    "x-manus-api-key": API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    message: { content: [{ type: "text", text: "ping" }] },
-  }),
-});
-const _diagText = await _diagRes.text();
-console.log(`DIAG status: ${_diagRes.status}`);
-console.log(`DIAG body: ${_diagText}`);
-console.log("=== END DEBUG (exiting before full call) ===");
-process.exit(_diagRes.ok ? 0 : 2);
+// === DEBUG v2: bisect optional fields ===
+async function _diagCall(label, body) {
+  const r = await fetch(`${BASE_URL}/task.create`, {
+    method: "POST",
+    headers: {
+      "x-manus-api-key": API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const t = await r.text();
+  console.log(`[${label}] status=${r.status} body=${t.slice(0, 400)}`);
+  return r.ok;
+}
+const _diagBase = { message: { content: [{ type: "text", text: "ping" }] } };
+await _diagCall("A schema-only", { ..._diagBase, structured_output_schema: STRUCTURED_SCHEMA });
+await _diagCall("B title-only", { ..._diagBase, title: "diag" });
+await _diagCall("C profile-only", { ..._diagBase, agent_profile: AGENT_PROFILE });
+await _diagCall("D hide-only", { ..._diagBase, hide_in_task_list: true });
+console.log("=== END DEBUG v2 ===");
+process.exit(0);
 // === END DEBUG ===
 
 console.log(`Manus task.create 호출 — profile=${AGENT_PROFILE}`);
