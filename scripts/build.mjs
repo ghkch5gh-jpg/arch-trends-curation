@@ -137,6 +137,25 @@ if (DRY_RUN) {
   process.exit(0);
 }
 
+// === DEBUG: minimal call to isolate root cause ===
+console.log("=== DEBUG: minimal task.create test ===");
+const _diagRes = await fetch(`${BASE_URL}/task.create`, {
+  method: "POST",
+  headers: {
+    "x-manus-api-key": API_KEY,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: { content: [{ type: "text", text: "ping" }] },
+  }),
+});
+const _diagText = await _diagRes.text();
+console.log(`DIAG status: ${_diagRes.status}`);
+console.log(`DIAG body: ${_diagText}`);
+console.log("=== END DEBUG (exiting before full call) ===");
+process.exit(_diagRes.ok ? 0 : 2);
+// === END DEBUG ===
+
 console.log(`Manus task.create 호출 — profile=${AGENT_PROFILE}`);
 const createRes = await fetch(`${BASE_URL}/task.create`, {
   method: "POST",
