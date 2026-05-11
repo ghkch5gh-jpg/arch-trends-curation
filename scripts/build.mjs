@@ -519,6 +519,7 @@ title: ${slug} — 건축 현상설계 트렌드
 eyebrow: WEEKLY · ${heroDate} ${dayOfWeek}
 hero_title: "${heroDate}<br/><i>${data.trend_note}</i>"
 description: ${data.weekly_summary}
+summary: ${data.trend_note}
 ---
 
 ## 이번 주 흐름
@@ -561,18 +562,43 @@ const files = (await readdir("."))
   .sort()
   .reverse();
 
-// Build a teaser block from THIS run's trends so the index page is never
-// just a bare 회차 list. The teaser is regenerated every run, so it always
-// reflects the latest issue.
+// Read each weekly MD's frontmatter to pull its one-line `summary` field
+// (set in this run's frontmatter above; older files without it fall back to
+// just the slug). This builds rich "YYYY-MM-DD (요일) — summary" entries
+// matching the ainews-curation pattern where each episode title hints at
+// what's inside.
+async function readSummaryOf(file) {
+  try {
+    const raw = await readFile(file, "utf8");
+    const content = raw.replace(/\r\n/g, "\n"); // normalize CRLF → LF
+    const m = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!m) return "";
+    const fm = m[1];
+    const sumMatch = fm.match(/^summary:\s*(.+)$/m);
+    if (sumMatch) return sumMatch[1].trim();
+    // Fallback for older files: try to pull <i>...</i> from hero_title.
+    const heroMatch = fm.match(/^hero_title:\s*".*?<i>(.+?)<\/i>/m);
+    if (heroMatch) return heroMatch[1].trim();
+    return "";
+  } catch {
+    return "";
+  }
+}
+const episodeEntries = await Promise.all(
+  files.map(async (f) => {
+    const slugOnly = f.replace(".md", "");
+    const summary = await readSummaryOf(f);
+    return summary
+      ? `- [${slugOnly} — ${summary}](${slugOnly}.html)`
+      : `- [${slugOnly}](${slugOnly}.html)`;
+  })
+);
+
 const sourceNames = validSources
   .map((s) => s.name.replace(/\s*\([^)]+\)\s*$/, "").trim())
   .filter(Boolean);
 const sourceLine =
   sourceNames.length > 0 ? sourceNames.join(" · ") : "(미설정)";
-const trendTeaser =
-  data.trends.length > 0
-    ? data.trends.map((t, i) => `${i + 1}. **${t.title}**`).join("\n")
-    : "_(이번 주 트렌드 추출 결과 없음)_";
 const ownPackLine =
   ownPackSummary.total > 0
     ? `사용자가 직접 큐레이션한 학교 현상설계 당선작 **${ownPackSummary.total}건**의 어휘 사전`
@@ -592,31 +618,26 @@ stats:
     lbl: "회차"
 ---
 
-## 이번 주 (${slug})
+## 회차 목록
 
-${data.weekly_summary}
+${episodeEntries.join("\n")}
 
-**다룬 트렌드 ${data.trends.length}건:**
+*매주 월요일 09:00 KST에 새 회차가 자동으로 추가됩니다.*
 
-${trendTeaser}
+## 각 회차에는
 
-[→ 자세히 보기](${slug}.html)
+- **트렌드 2~4건** — 이번 주 RFP에서 관찰된 패턴 (타이폴로지·RFP 언어·방식·부지 맥락)
+- **시그널** — 빈도·범위 근거
+- **디자인 시사** — 구체적인 공간 어휘·다이어그램 전략·재료 선택
+- **evidence** — 각 트렌드 뒷받침하는 이번 주 공고 2~5건 (제목·발주처·마감·규모·deep link)
 
 ## 이 큐레이션이 하는 것
 
 매주 월요일 09:00 KST, **${sourceLine}** ${validSources.length}곳에서 새로 뜬 공모와 결과를 자동 수집해 Manus AI가 트렌드를 추출합니다.
 
-단순 공모 캘린더가 아니라 **설계 어휘·전략** 추출이 목적입니다. 매 트렌드마다 evidence 공고 묶음과 함께 구체적인 디자인 시사(공간 어휘·다이어그램 전략·재료 선택)를 같이 제시합니다.
-
-디자인 시사 작성 시 ${ownPackLine}을 직접 참조하므로, 응모안 컨셉 스타팅 포인트로 바로 활용 가능합니다.
+단순 공모 캘린더가 아니라 **설계 어휘·전략** 추출이 목적입니다. 디자인 시사 작성 시 ${ownPackLine}을 직접 참조하므로, 응모안 컨셉 스타팅 포인트로 바로 활용 가능합니다.
 
 자동 추출이라 일부 표면 패턴·노이즈 섞일 수 있음 — 사람 검수 권장.
-
-## 회차
-
-${files
-  .map((f) => `- [${f.replace(".md", "")}](${f.replace(".md", ".html")})`)
-  .join("\n")}
 `;
 
 await writeFile("index.md", indexMd);
