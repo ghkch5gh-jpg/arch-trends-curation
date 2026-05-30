@@ -1,27 +1,37 @@
 [
   {
-    "name": "부산 건축설계공모 (making.busan.go.kr)",
-    "url": "https://making.busan.go.kr/main",
-    "note": "부산시 운영 건축설계공모 포털 메인. plain HTML·UTF-8. 진행중/예정 공모전 제목·발주처 노출. 부산권 신호 캡처용."
+    "name": "주택폴리오 공모전 DB (jootek.com)",
+    "url": "https://jootek.com/folio/contests",
+    "kind": "html",
+    "tag": "jootek",
+    "note": "민간 큐레이션 공모전 DB. plain HTML·UTF-8. 학교·관청·민간 설계공모 폭넓게 수집. 큐레이션 신호 가장 강함."
   },
   {
     "name": "조달청 건축HUB 진행 중 공모 (hub.go.kr)",
     "url": "https://www.hub.go.kr/portal/dpsMain.do",
-    "note": "건축서비스산업 정보시스템의 진행중 공모 페이지. plain HTML·UTF-8. 마감일·발주처·위치 직접 노출. (이전 /portal/main.do는 연례 시상 뉴스 위주라 주간 트렌드에 부적합 → 교체.)"
-  },
-  {
-    "name": "주택폴리오 공모전 DB (jootek.com)",
-    "url": "https://jootek.com/folio/contests",
-    "note": "민간 큐레이션 공모전 DB. plain HTML·UTF-8. 학교·관청·민간 설계공모 폭넓게 수집. 큐레이션 신호 가장 강함."
-  },
-  {
-    "name": "(사)한국건축가협회 공모전 게시판 (kia.or.kr)",
-    "url": "https://www.kia.or.kr/competition/compet_korea_notice.php",
-    "note": "한국건축가협회 공모전·시상 게시판. plain HTML·UTF-8. 대한민국건축대전 등 협회 주관 + 지자체 건축상 외부 게시."
+    "kind": "html",
+    "tag": "hub",
+    "note": "건축서비스산업 정보시스템의 진행중 공모 페이지. plain HTML·UTF-8. 마감일·발주처·위치 직접 노출."
   },
   {
     "name": "위비티 건축/건설/인테리어 카테고리 (wevity.com)",
     "url": "https://www.wevity.com/?c=find&s=1&gub=1&cidx=24",
+    "kind": "html",
+    "tag": "wevity",
     "note": "공모전 종합 포털 위비티의 건축 카테고리. plain HTML·UTF-8. 지자체 건축상·민간 공모전 폭넓게 인덱싱. 전국 단위 보강용."
+  },
+  {
+    "name": "부산 건축설계공모 (making.busan.go.kr)",
+    "url": "https://making.busan.go.kr/main",
+    "kind": "html",
+    "tag": "busan",
+    "note": "부산시 운영 건축설계공모 포털 메인. plain HTML·UTF-8. 진행중/예정 공모전 제목·발주처 노출. 부산권 신호 캡처용."
+  },
+  {
+    "name": "(사)한국건축가협회 공모전 게시판 (kia.or.kr)",
+    "url": "https://www.kia.or.kr/competition/compet_korea_notice.php",
+    "kind": "html",
+    "tag": "kia",
+    "note": "한국건축가협회 공모전·시상 게시판. plain HTML·UTF-8. 대한민국건축대전 등 협회 주관 + 지자체 건축상 외부 게시."
   }
 ]
