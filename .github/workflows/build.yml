@@ -1,9 +1,8 @@
 name: Build weekly arch trends
 
 on:
-  schedule:
-    # 월요일 00:00 UTC = 월요일 09:00 KST
-    - cron: '0 0 * * 1'
+  # 자동 스케줄 비활성화 (2026-05-30) — claude -p 로컬 생성기 + Windows 작업
+  # "Arch Trends Weekly"(매주 월 09:00 KST)로 전환. 수동 실행만 남김.
   workflow_dispatch:
 
 jobs:
