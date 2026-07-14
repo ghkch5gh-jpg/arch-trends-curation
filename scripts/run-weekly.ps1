@@ -3,7 +3,7 @@
 # Desktop folder via the API instead of hardcoding Korean bytes in this script.
 $ErrorActionPreference = 'Continue'
 
-# Scheduled tasks run with a minimal PATH - point at node / git / npm-global (claude) explicitly.
+# Scheduled tasks run with a minimal PATH - point at node / git / npm-global (codex) explicitly.
 $env:Path = "C:\Program Files\nodejs;C:\Program Files\Git\cmd;C:\Users\myh43\AppData\Roaming\npm;$env:Path"
 
 $repo = Join-Path ([Environment]::GetFolderPath('Desktop')) 'work\_inspect\arch-trends-curation'
